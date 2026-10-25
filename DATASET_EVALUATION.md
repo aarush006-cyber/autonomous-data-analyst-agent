@@ -35,11 +35,11 @@ $$\text{inspect\_dataset} \longrightarrow \text{planner} \longrightarrow \text{c
 
 | Dataset | Dimensions | Domain & Source | Planned ML Task | Target Column | Charts | Review Status | Run Time | Full Report Link |
 |---|:---:|---|---|---|:---:|:---:|:---:|---|
-| **Iris** | 150 × 5 | Botany (`sklearn.datasets.load_iris`) | Classification | `species` | 6 | **Accepted** | 3.5s | [iris_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/iris_report.md) |
-| **Titanic** | 891 × 15 | Demographics (Seaborn built-in) | Classification | `class` | 9 | **Accepted** | 4.0s | [titanic_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/titanic_report.md) |
-| **UCI Wine Recognition** | 178 × 14 | Chemistry (`sklearn.datasets.load_wine` (UCI Wine Recognition, 178 rows; not Wine Quality)) | Classification | `target` | 5 | **Accepted** | 4.3s | [wine_quality_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/wine_quality_report.md) |
-| **Breast Cancer** | 569 × 31 | Medicine (`load_breast_cancer`) | Classification | `diagnosis` | 6 | **Accepted** | 4.4s | [breast_cancer_wisconsin_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/breast_cancer_wisconsin_report.md) |
-| **California Housing** | 20,640 × 9 | Economics (`fetch_california_housing`) | Regression | `MedHouseVal` | 6 | **Accepted** | 5.4s | [california_housing_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/california_housing_report.md) |
+| **Iris** | 150 × 5 | Botany (`sklearn.datasets.load_iris`) | Classification | `species` | 6 | **Accepted** | 3.5s | [iris_report.md](reports/iris_report.md) |
+| **Titanic** | 891 × 15 | Demographics (Seaborn built-in) | Classification | `class` | 9 | **Accepted** | 4.0s | [titanic_report.md](reports/titanic_report.md) |
+| **UCI Wine Recognition** | 178 × 14 | Chemistry (`sklearn.datasets.load_wine` (UCI Wine Recognition)) | Classification | `target` | 5 | **Accepted** | 4.3s | [uci_wine_recognition_report.md](reports/uci_wine_recognition_report.md) |
+| **Breast Cancer** | 569 × 31 | Medicine (`load_breast_cancer`) | Classification | `diagnosis` | 6 | **Accepted** | 4.4s | [breast_cancer_wisconsin_report.md](reports/breast_cancer_wisconsin_report.md) |
+| **California Housing** | 20,640 × 9 | Economics (`fetch_california_housing`) | Regression | `MedHouseVal` | 6 | **Accepted** | 5.4s | [california_housing_report.md](reports/california_housing_report.md) |
 
 ---
 
