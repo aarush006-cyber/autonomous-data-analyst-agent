@@ -341,7 +341,7 @@ class TestCodeExecutor:
         assert len(warnings) == 0
 
     def test_pandas_dataframe_eval_is_not_blocked(self):
-        code = "import pandas as pd\\ndf = pd.DataFrame({'a': [1]})\\ndf.eval('a + 1')"
+        code = "import pandas as pd\ndf = pd.DataFrame({'a': [1]})\ndf.eval('a + 1')"
         warnings = validate_code_safety(code)
         assert not any("eval" in warning.lower() for warning in warnings)
 
