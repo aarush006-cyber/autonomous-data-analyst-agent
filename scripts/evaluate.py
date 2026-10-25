@@ -3,7 +3,7 @@
 Evaluates the agent on:
 1. Iris
 2. Titanic
-3. Wine Quality
+3. UCI Wine Recognition
 4. Breast Cancer Wisconsin
 5. California Housing
 
