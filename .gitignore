@@ -1,0 +1,82 @@
+# ==============================================================================
+# Environment & Secret Protection
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# ==============================================================================
+# Python Runtime & Bytecode
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ==============================================================================
+# Virtual Environments
+# ==============================================================================
+venv/
+.venv/
+env/
+ENV/
+
+# ==============================================================================
+# Testing & Diagnostics
+# ==============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Temporary test execution directories
+test_docker_live/
+test_docker_verification/
+test_e2e_run/
+test_e2e_results/
+test_analyst_*/
+docker_verify_*/
+analyst_exec_*/
+cache_test_*/
+
+# ==============================================================================
+# OS & Editor Artifacts
+# ==============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Accidentally generated Windows system-cache paths
+%SystemDrive%/
+**/%SystemDrive%/**
+
+# ==============================================================================
+# Scratch & Local Development Caches
+# ==============================================================================
+scratch/
+tmp/
+temp/
+*.tmp
+.streamlit/
+.ipynb_checkpoints/
+
+# Generic runtime output scratch folders (reports/ remains tracked)
+artifacts/
+datasets/artifacts/
+reports/*.html
