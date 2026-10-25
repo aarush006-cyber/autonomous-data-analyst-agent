@@ -340,6 +340,26 @@ class TestCodeExecutor:
         warnings = validate_code_safety(code)
         assert len(warnings) == 0
 
+    def test_pandas_dataframe_eval_is_not_blocked(self):
+        code = "import pandas as pd\\ndf = pd.DataFrame({'a': [1]})\\ndf.eval('a + 1')"
+        warnings = validate_code_safety(code)
+        assert not any("eval" in warning.lower() for warning in warnings)
+
+    def test_auto_backend_fails_closed_without_docker(self, sample_csv, temp_dir, monkeypatch):
+        monkeypatch.setattr(DockerExecutor, "is_docker_available", staticmethod(lambda: False))
+        executor = get_executor(is_demo=False, backend="auto")
+        assert isinstance(executor, DockerExecutor)
+        result = executor.execute("print('must not run')", sample_csv, temp_dir, timeout=1)
+        assert not result.success
+        assert "NOT run on the host" in result.error_summary
+
+    def test_demo_auto_backend_does_not_fall_back_to_host(self, sample_csv, temp_dir, monkeypatch):
+        monkeypatch.setattr(DockerExecutor, "is_docker_available", staticmethod(lambda: False))
+        executor = get_executor(is_demo=True, backend="auto")
+        result = executor.execute("print('must not run')", sample_csv, temp_dir, timeout=1)
+        assert not result.success
+        assert "NOT run on the host" in result.error_summary
+
     def test_demo_executor(self, sample_csv, temp_dir):
         executor = DemoExecutor()
         assert "Demo" in executor.backend_name
