@@ -170,7 +170,7 @@ class TestExecutorResolution:
             executor = get_executor(backend="auto")
             assert isinstance(executor, DockerExecutor)
             dataset_file = tmp_path / "data.csv"
-            dataset_file.write_text("x\\n1\\n", encoding="utf-8")
+            dataset_file.write_text("x\n1\n", encoding="utf-8")
             result = executor.execute("print('must not run on host')", str(dataset_file), str(tmp_path), timeout=1)
             assert result.success is False
             assert "NOT run on host" in result.error_summary
