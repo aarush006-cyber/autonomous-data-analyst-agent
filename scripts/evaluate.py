@@ -59,8 +59,8 @@ DATASETS = [
         "loader": "_load_titanic",
     },
     {
-        "name": "Wine Quality",
-        "source": "sklearn.datasets.load_wine (substitute for UCI Wine Quality)",
+        "name": "UCI Wine Recognition",
+        "source": "sklearn.datasets.load_wine (UCI Wine Recognition dataset; not Wine Quality)",
         "license": "BSD (sklearn) / CC BY 4.0 (UCI original)",
         "loader": "_load_wine",
     },
@@ -300,7 +300,7 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
     return record
 
 
-def run_evaluation(mode: str = "demo", backend: str = "auto", target_dataset: str | None = None):
+def run_evaluation(mode: str = "demo", backend: str = "docker", target_dataset: str | None = None):
     """Run the 5-dataset evaluation suite."""
     print("=" * 70)
     print("Autonomous Data Analyst — 5-Dataset Evaluation Suite")
@@ -391,7 +391,7 @@ def run_evaluation(mode: str = "demo", backend: str = "auto", target_dataset: st
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Autonomous Data Analyst on 5 datasets")
     parser.add_argument("--mode", choices=["demo", "llm"], default="demo", help="Execution mode (demo or llm)")
-    parser.add_argument("--backend", choices=["auto", "subprocess", "docker"], default="auto", help="Execution backend")
+    parser.add_argument("--backend", choices=["auto", "subprocess", "docker"], default="docker", help="Execution backend (default: docker; subprocess is development-only)")
     parser.add_argument("--dataset", type=str, default=None, help="Target specific dataset (e.g. Iris)")
     args = parser.parse_args()
 
