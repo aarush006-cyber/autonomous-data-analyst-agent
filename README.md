@@ -96,8 +96,8 @@ reports/                   Example reports and charts
 
 - Python 3.11 or newer
 - pip
-- Optional: NVIDIA NIM API key (or another supported OpenAI-compatible API)
-- Optional: Docker, for containerized execution
+- NVIDIA NIM API key for live LLM evaluation
+- Docker Engine for the default safe execution path; host subprocess is development-only
 
 ## Setup
 
@@ -164,11 +164,19 @@ Tests cover CSV validation and profiling, agent output validation, executor beha
 
 ## Evaluate on five datasets
 
-Run:
+Run a live evaluation (requires a valid NVIDIA key and Docker):
 
 ```bash
-python scripts/evaluate.py
+python scripts/evaluate.py --mode llm --backend docker
 ```
+
+Run the deterministic smoke test in Docker:
+
+```bash
+python scripts/evaluate.py --mode demo --backend docker
+```
+
+`--mode llm` now fails immediately if no valid API key is configured; it will not silently downgrade to demo mode. To run trusted local development tests without Docker, explicitly pass `--backend subprocess` (not a secure sandbox).
 
 The benchmark suite covers a mix of classification and regression tasks:
 
@@ -176,7 +184,7 @@ The benchmark suite covers a mix of classification and regression tasks:
 |---|---|---|
 | Iris | Multiclass classification | Clean numerical features and target discovery |
 | Titanic | Classification | Mixed column types, categorical fields, and missing data |
-| Wine Quality | Classification / quality prediction | Numerical feature analysis and target selection |
+| UCI Wine Recognition | Multiclass classification | Chemical feature analysis and target selection |
 | Breast Cancer Wisconsin | Binary classification | Higher-dimensional numerical data |
 | California Housing | Regression | Continuous target and larger dataset handling |
 
@@ -193,9 +201,9 @@ Configure `EXECUTION_BACKEND` in `.env` or your environment:
 
 | Value | Behavior |
 |---|---|
-| `auto` | Prefer Docker when available; otherwise use the configured fallback behavior |
+| `auto` | Require Docker; fail explicitly if Docker is unavailable (no host fallback) |
 | `docker` | Require Docker and fail clearly if it is unavailable |
-| `subprocess` | Force subprocess execution |
+| `subprocess` | Force host subprocess execution; development/testing only, not a sandbox |
 
 Build the image with:
 
@@ -203,7 +211,7 @@ Build the image with:
 docker build -t data-analyst-sandbox:latest -f docker/Dockerfile .
 ```
 
-**Security note:** Do not run this project against untrusted code in production using the subprocess backend. Import/keyword filtering is not equivalent to operating-system isolation. Review the implementation and Docker configuration before treating any execution mode as a security boundary.
+**Security note:** The import/keyword filter is only a heuristic and is not a security boundary. It cannot reliably block filesystem operations or dynamic Python behavior. For generated code, use Docker; `auto` fails closed if Docker is unavailable. Explicit `subprocess` mode runs code on the host and must be treated as DEVELOPMENT ONLY.
 
 ## Known limitations
 
@@ -211,7 +219,7 @@ docker build -t data-analyst-sandbox:latest -f docker/Dockerfile .
 - Demonstration mode is deterministic rather than fully task-adaptive.
 - Very large datasets can increase execution time and memory use.
 - Session persistence and report retention may be limited by the current Streamlit implementation.
-- The five-dataset benchmark is a useful smoke/evaluation suite, not proof of general reliability across all possible CSVs.
+- The five-dataset benchmark is a smoke/evaluation suite, not proof of general reliability across all possible CSVs. Stored demonstration-mode reports are not evidence that the live LLM Planner → Coder → Reviewer loop passed on all five datasets.
 - Docker execution requires a working Docker engine and compatible host configuration.
 
 ## Project documentation
