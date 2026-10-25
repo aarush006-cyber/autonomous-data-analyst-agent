@@ -560,7 +560,7 @@ def get_executor(
     - If `is_demo`: returns DemoExecutor.
     - If backend == 'docker': returns DockerExecutor (explicit failure if Docker is down).
     - If backend == 'subprocess': returns SubprocessExecutor.
-    - If backend == 'auto' (default): returns DockerExecutor if Docker is available, else SubprocessExecutor.
+    - If backend == 'auto' (default): returns DockerExecutor and fails explicitly if unavailable; never falls back to host execution.
     """
     configured_backend = (backend or os.getenv("EXECUTION_BACKEND", "auto")).lower()
 
