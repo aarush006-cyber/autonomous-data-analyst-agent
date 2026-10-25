@@ -128,6 +128,7 @@ def demo_config():
             code_execution_timeout=60,
             max_code_size_kb=100,
             max_output_size_kb=500,
+            backend="subprocess",  # Explicit development-only backend; CI has no Docker daemon.
         ),
     )
 
