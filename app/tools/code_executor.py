@@ -513,9 +513,9 @@ class DemoExecutor(ExecutorInterface):
 
     @property
     def backend_name(self) -> str:
-        if self.use_docker and DockerExecutor.is_docker_available():
-            return "Deterministic Demo (Docker Sandboxed)"
-        return "Deterministic Demo (Local Subprocess)"
+        if self.use_docker:
+            return "Deterministic Demo (Docker required; no host fallback)"
+        return "Deterministic Demo (Local Subprocess — DEVELOPMENT ONLY)"
 
     @property
     def is_sandboxed(self) -> bool:
