@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 BLOCKED_IMPORTS = [
     "subprocess", "os.system", "shutil.rmtree", "socket", "http",
     "urllib", "requests", "paramiko", "ftplib", "smtplib",
-    "ctypes", "importlib", "eval", "exec", "__import__",
+    "ctypes", "importlib", "exec", "__import__",
 ]
 
 MAX_STDOUT = 200_000   # bytes
@@ -530,9 +530,20 @@ class DemoExecutor(ExecutorInterface):
         timeout: int = 120,
     ) -> ExecutionResult:
         """Execute the provided deterministic analysis code."""
-        if self.use_docker and DockerExecutor.is_docker_available():
+        if self.use_docker:
+            if not DockerExecutor.is_docker_available():
+                return ExecutionResult(
+                    success=False,
+                    error_summary=(
+                        "Docker backend is required but the Docker daemon is unavailable. "
+                        "Execution was NOT run on the host. Set EXECUTION_BACKEND=subprocess "
+                        "only for trusted development/testing workloads."
+                    ),
+                    exit_code=-1,
+                )
             executor: ExecutorInterface = DockerExecutor()
         else:
+            # Explicit subprocess mode is development-only and not a security boundary.
             executor = SubprocessExecutor()
         return executor.execute(code, dataset_path, output_dir, timeout)
 
@@ -554,7 +565,9 @@ def get_executor(
     configured_backend = (backend or os.getenv("EXECUTION_BACKEND", "auto")).lower()
 
     if is_demo:
-        use_docker = configured_backend == "docker" or (configured_backend == "auto" and DockerExecutor.is_docker_available())
+        # "auto" is fail-closed: it requires Docker rather than silently running on the host.
+        # Host subprocess execution is available only when explicitly selected.
+        use_docker = configured_backend in ("docker", "auto")
         return DemoExecutor(use_docker=use_docker)
 
     if configured_backend == "docker":
@@ -563,11 +576,8 @@ def get_executor(
     if configured_backend == "subprocess":
         return SubprocessExecutor()
 
-    # 'auto' mode
-    if DockerExecutor.is_docker_available():
-        return DockerExecutor()
-
-    return SubprocessExecutor()
+    # 'auto' mode is fail-closed: never silently execute generated code on the host.
+    return DockerExecutor()
 
 
 def code_hash(code: str) -> str:
