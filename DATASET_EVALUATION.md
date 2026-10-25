@@ -1,5 +1,7 @@
 # Autonomous Data Analyst Agent — Dataset Evaluation Report
 
+> **Important qualification (2026-10-25):** The five stored dataset reports and `evaluation_results.json` were generated in **DEMONSTRATION** mode. They validate the deterministic workflow path only; they do **not** prove that live Planner/Coder/Reviewer model calls completed on all five datasets. The separate historical live Iris run is documented in `END_TO_END_TEST_REPORT.md` and ended in a controlled failure after three correction attempts. Run `python scripts/evaluate.py --mode llm --backend docker` with a valid NVIDIA key to produce a genuine live evaluation. The script now refuses to call a run “LLM” when no valid key is configured.
+
 **Evaluation Date:** 2026-10-25  
 **Environment:** Windows 11, Python 3.13.14  
 **Workflow Engine:** LangGraph StateGraph (Phase 1 & Phase 2)  
@@ -10,18 +12,18 @@
 
 ## 1. Executive Summary
 
-The Autonomous Data Analyst Agent was evaluated against five representative public benchmark datasets:
+The deterministic demonstration workflow was smoke-tested against five public datasets (the stored results below are not a five-dataset live-LLM evaluation):
 1. **Fisher's Iris** (Multiclass flower classification)
 2. **Titanic Passenger Survival** (Binary survival classification with mixed types & missing values)
-3. **Wine Quality** (Multiclass chemical classification)
+3. **UCI Wine Recognition** (Multiclass chemical classification)
 4. **Breast Cancer Wisconsin** (High-dimensional binary medical diagnosis)
 5. **California Housing** (Large-scale continuous value regression)
 
-Each dataset was evaluated by executing the complete LangGraph agent pipeline:
+Each stored report was generated through the LangGraph workflow in demonstration mode; the live LLM Planner → Coder → Reviewer loop has not been verified across all five datasets:
 $$\text{inspect\_dataset} \longrightarrow \text{planner} \longrightarrow \text{coder} \longrightarrow \text{execute\_analysis} \longrightarrow \text{reviewer} \longrightarrow \text{report\_generator}$$
 
 ### Key Evaluation Findings
-- **100% Ingestion & Profiling Success:** All 5 datasets loaded, schema-analyzed, and profiled without runtime errors.
+- **Stored demo run:** The recorded deterministic run reports successful ingestion and profiling across the five datasets. These results must not be presented as live-LLM success.
 - **Dynamic Task Adaptation:** The agent correctly differentiated between classification tasks (Iris, Titanic, Wine, Breast Cancer) and continuous regression tasks (California Housing).
 - **Comprehensive Artifact Generation:** 32 distinct high-resolution visualization charts (`.png`) and 5 comprehensive analytical reports (`.md`) were generated.
 - **Execution Safety & Boundaries:** All code was executed out-of-process via the execution service abstraction, with zero direct `exec()` calls in the application UI process.
@@ -35,7 +37,7 @@ $$\text{inspect\_dataset} \longrightarrow \text{planner} \longrightarrow \text{c
 |---|:---:|---|---|---|:---:|:---:|:---:|---|
 | **Iris** | 150 × 5 | Botany (`sklearn.datasets.load_iris`) | Classification | `species` | 6 | **Accepted** | 3.5s | [iris_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/iris_report.md) |
 | **Titanic** | 891 × 15 | Demographics (Seaborn built-in) | Classification | `class` | 9 | **Accepted** | 4.0s | [titanic_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/titanic_report.md) |
-| **Wine Quality** | 178 × 14 | Chemistry (`sklearn.datasets.load_wine`) | Classification | `target` | 5 | **Accepted** | 4.3s | [wine_quality_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/wine_quality_report.md) |
+| **UCI Wine Recognition** | 178 × 14 | Chemistry (`sklearn.datasets.load_wine` (UCI Wine Recognition, 178 rows; not Wine Quality)) | Classification | `target` | 5 | **Accepted** | 4.3s | [wine_quality_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/wine_quality_report.md) |
 | **Breast Cancer** | 569 × 31 | Medicine (`load_breast_cancer`) | Classification | `diagnosis` | 6 | **Accepted** | 4.4s | [breast_cancer_wisconsin_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/breast_cancer_wisconsin_report.md) |
 | **California Housing** | 20,640 × 9 | Economics (`fetch_california_housing`) | Regression | `MedHouseVal` | 6 | **Accepted** | 5.4s | [california_housing_report.md](file:///c:/Users/win11/Documents/ai%20project/mlsa1/autonomous-data-analyst/reports/california_housing_report.md) |
 
