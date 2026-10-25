@@ -165,11 +165,15 @@ class TestExecutorResolution:
         assert executor.is_sandboxed is False
         assert "not sandboxed" in executor.backend_name
 
-    def test_get_executor_auto_when_docker_down(self):
+    def test_get_executor_auto_when_docker_down(self, tmp_path):
         with patch.object(DockerExecutor, "is_docker_available", return_value=False):
             executor = get_executor(backend="auto")
-            assert isinstance(executor, SubprocessExecutor)
-            assert executor.is_sandboxed is False  # Never presents host execution as sandboxed
+            assert isinstance(executor, DockerExecutor)
+            dataset_file = tmp_path / "data.csv"
+            dataset_file.write_text("x\\n1\\n", encoding="utf-8")
+            result = executor.execute("print('must not run on host')", str(dataset_file), str(tmp_path), timeout=1)
+            assert result.success is False
+            assert "NOT run on host" in result.error_summary
 
     def test_get_executor_auto_when_docker_up(self):
         with patch.object(DockerExecutor, "is_docker_available", return_value=True):
