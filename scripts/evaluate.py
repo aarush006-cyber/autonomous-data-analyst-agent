@@ -193,6 +193,10 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
         "shape": None,
         "plan_created": False,
         "plan_objective": "",
+        "workflow_status": "not_started",
+        "generation_mode": "unknown",
+        "is_fallback": False,
+        "fallback_reason": "",
         "use_ml": False,
         "ml_task": "",
         "target_column": "",
@@ -252,6 +256,10 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
             record["target_column"] = plan.get("target_column", "")
 
         status = final_state.get("workflow_status", "unknown")
+        record["workflow_status"] = status
+        record["generation_mode"] = final_state.get("generation_mode", "unknown")
+        record["is_fallback"] = bool(final_state.get("is_fallback", False))
+        record["fallback_reason"] = final_state.get("fallback_reason", "")
         corrections = final_state.get("correction_history", [])
         record["correction_attempts"] = len(corrections)
         record["corrections_required"] = len(corrections) > 0
@@ -307,8 +315,13 @@ def run_evaluation(mode: str = "demo", backend: str = "docker", target_dataset: 
     print(f"Started: {datetime.now().isoformat()}")
     print("=" * 70)
 
-    # Configure execution mode
+    # Configure execution mode. Never label a missing-key run as live LLM evaluation.
     base_config = load_config()
+    if mode.lower() == "llm" and not base_config.llm.available:
+        raise RuntimeError(
+            "Live LLM evaluation requested, but no valid NVIDIA_API_KEY (or LLM_API_KEY) "
+            "is configured. Set the key in .env or the environment; no demo fallback was run."
+        )
     if mode.lower() == "demo":
         llm_cfg = LLMConfig(
             provider="none",
