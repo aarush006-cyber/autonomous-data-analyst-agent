@@ -36,6 +36,11 @@ def build_graph(config: AppConfig) -> StateGraph:
     """
     llm = get_llm(config)
     is_demo = config.llm.is_demo_mode
+    if not is_demo and llm is None:
+        raise RuntimeError(
+            "A live LLM API key is configured, but the LLM client could not be initialized. "
+            "Refusing to silently run deterministic demo logic in a live evaluation."
+        )
 
     # --- Node functions ---
 
