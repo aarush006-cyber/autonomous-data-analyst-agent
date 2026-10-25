@@ -1,247 +1,231 @@
 # Autonomous Data Analyst Agent
 
-An AI-powered data analysis application that accepts CSV files and autonomously inspects, plans, codes, executes, reviews, and reports on data analysis — all orchestrated by a LangGraph workflow with three distinct agents.
+An AI-powered CSV analysis system built with **LangGraph**. Upload a dataset, let specialized agents plan an analysis, generate and execute Python code, review the results, and produce a concise report with charts.
 
-## Architecture
+This project is designed around the MLSA ML Team challenge: a **Planner**, **Coder/Executor**, and **Reviewer** collaborate through a bounded self-correction loop. It includes a five-dataset evaluation workflow and an execution-backend abstraction.
 
-```
+## What it does
+
+- Accepts CSV datasets through a Streamlit interface.
+- Profiles columns, data types, missing values, duplicates, and basic statistics.
+- Creates a structured analysis plan from dataset metadata.
+- Generates Pandas / scikit-learn analysis code and executes it through a configurable execution backend.
+- Reviews execution results against the plan and routes failures back for correction.
+- Stops after a bounded number of correction attempts and records why analysis could not complete.
+- Produces a Markdown report and charts.
+- Supports a deterministic demonstration mode when an LLM API key is not configured.
+- Provides a benchmark script for five public datasets.
+
+## Agent workflow
+
+```text
 START
-  │
-  ▼
-inspect_dataset  →  Load CSV, profile data, detect quality issues
-  │
-  ▼
-planner          →  Create structured analysis plan
-  │
-  ▼
-coder            →  Generate Python analysis code
-  │
-  ▼
-execute_analysis →  Run code in isolated execution service
-  │
-  ▼
-reviewer         →  Evaluate results against plan
-  │
-  ▼
+  |
+  v
+inspect_dataset  --> Load CSV, inspect schema, profile data quality
+  |
+  v
+planner          --> Build a structured plan and decide whether ML is useful
+  |
+  v
+coder            --> Generate Python analysis code
+  |
+  v
+execute_analysis --> Run code via the configured execution backend
+  |
+  v
+reviewer         --> Check results against the plan and execution errors
+  |
+  v
 conditional_router
-  ├── Needs correction → coder (max 3 retries)
-  ├── Accepted        → report_generator → END
-  └── Limit reached   → failure_handler  → END
+  |-- Needs correction --> coder (bounded retry loop)
+  |-- Accepted ---------> report_generator --> END
+  |-- Retry limit ------> failure_handler --> END
 ```
 
-### Three Agents
+### Agent responsibilities
 
-| Agent | Role | Key Outputs |
-|-------|------|-------------|
-| **Planner** | Inspects dataset metadata, creates structured analysis plan, decides if ML is appropriate | `AnalysisPlan` (steps, visualizations, ML decision) |
-| **Coder/Executor** | Generates Python code from the plan, handles corrections with error context | Analysis code + execution results |
-| **Reviewer** | Validates execution output against plan, checks for missing steps and errors | `ReviewResult` (accept / correct / terminate) |
+| Role | Responsibility | Output |
+|---|---|---|
+| **Planner** | Uses dataset profile and task context to define analysis steps, charts, and optional ML work. | Structured analysis plan |
+| **Coder / Executor** | Converts the plan into Python, runs it, and uses errors or feedback to correct code. | Code, execution status, outputs |
+| **Reviewer** | Checks whether the output covers the plan, whether execution succeeded, and whether required charts/results exist. | Accept, request correction, or terminate |
 
-## Technology Stack
+The workflow uses a bounded correction loop to reduce repeated failures and avoid unending agent execution.
 
-- **Python 3.11+** — Runtime
-- **LangGraph** — Workflow orchestration (state graph with conditional routing)
-- **LangChain** — LLM integration (OpenAI-compatible API)
-- **Streamlit** — Web interface
-- **Pandas / NumPy** — Data analysis
-- **Matplotlib / Seaborn** — Visualization
-- **scikit-learn** — Machine learning and statistical analysis
-- **Pydantic** — Structured output validation
-- **python-dotenv** — Environment configuration
-- **pytest** — Automated testing
+## Technology stack
 
-## Prerequisites
+- Python 3.11+
+- LangGraph and LangChain
+- Streamlit
+- Pandas and NumPy
+- Matplotlib and Seaborn
+- scikit-learn
+- Pydantic
+- python-dotenv
+- pytest
+- NVIDIA NIM through an OpenAI-compatible API by default
 
-- Python 3.11 or later
+## Repository layout
+
+```text
+app/
+  main.py                 Streamlit user interface
+  graph.py                LangGraph workflow and routing
+  state.py                Shared state and structured models
+  config.py               Environment and LLM configuration
+  agents/
+    planner.py            Planner agent
+    coder.py              Code-generation agent
+    reviewer.py           Review agent
+  tools/
+    dataset_tools.py      CSV ingestion and profiling
+    code_executor.py      Execution backend abstraction
+    report_generator.py   Markdown report and chart packaging
+  prompts/                Agent prompt templates
+docker/
+  Dockerfile              Container image for Docker execution
+scripts/
+  evaluate.py             Five-dataset evaluation runner
+tests/                    Unit, workflow, safety, and failure tests
+datasets/                  Benchmark datasets and evaluation results
+reports/                   Example reports and charts
+```
+
+## Requirements
+
+- Python 3.11 or newer
 - pip
+- Optional: NVIDIA NIM API key (or another supported OpenAI-compatible API)
+- Optional: Docker, for containerized execution
 
-## Environment Configuration
+## Setup
 
-1. Copy the example environment file:
-   ```
-   cp .env.example .env
-   ```
-
-2. Edit `.env` with your LLM credentials:
-   ```
-   LLM_PROVIDER=nvidia
-   NVIDIA_API_KEY=your_actual_api_key
-   LLM_MODEL=meta/muse-glimmer-30b
-   LLM_BASE_URL=https://integrate.api.nvidia.com/v1
-   ```
-
-3. Without an API key, the application runs in **Demonstration Mode** — deterministic analysis without LLM calls. Demo mode is clearly labeled in the UI and reports.
-
-### LLM Provider Setup
-
-The application uses NVIDIA NIM via LangChain's OpenAI-compatible integration (`langchain-openai`). It connects to NVIDIA NIM with Muse Glimmer by default:
-
-- **Model**: `meta/muse-glimmer-30b`
-- **Base URL**: `https://integrate.api.nvidia.com/v1`
-- **API Key**: `NVIDIA_API_KEY` (also supports `LLM_API_KEY`)
-
-- **NVIDIA NIM**: Set `LLM_BASE_URL=https://integrate.api.nvidia.com/v1`
-- **OpenAI**: Set `LLM_BASE_URL=https://api.openai.com/v1` and adjust model name
-- **Local (Ollama, vLLM)**: Set `LLM_BASE_URL=http://localhost:11434/v1`
-
-## Installation
+### 1. Clone and enter the repository
 
 ```bash
-cd autonomous-data-analyst
+git clone https://github.com/aarush006-cyber/autonomous-data-analyst-agent.git
+cd autonomous-data-analyst-agent
+```
+
+### 2. Create a virtual environment
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+macOS / Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## How to Launch
+### 4. Configure the model (optional)
+
+Copy `.env.example` to `.env` and edit the values. For NVIDIA NIM, set:
+
+```dotenv
+LLM_PROVIDER=nvidia
+NVIDIA_API_KEY=your_actual_api_key
+LLM_MODEL=meta/muse-glimmer-30b
+LLM_BASE_URL=https://integrate.api.nvidia.com/v1
+```
+
+Never commit your real `.env` file or API keys. The repository's `.env.example` should contain placeholder values only.
+
+Without a configured API key, the application can run in **Demonstration Mode**, which provides deterministic analysis without live model calls. The UI/report should identify demo-mode output clearly.
+
+## Run the application
 
 ```bash
 streamlit run app/main.py
 ```
 
-The application opens at `http://localhost:8501`.
+Open the local URL printed by Streamlit, typically `http://localhost:8501`, then upload a CSV and start the analysis workflow.
 
-## How to Run Automated Tests
+## Run the tests
 
 ```bash
 python -m pytest tests/ -v
 ```
 
-Tests cover:
-- CSV validation (empty, malformed, valid files)
-- Dataset profiling (missing values, duplicates, types)
-- Planner output validation
-- Reviewer output validation
-- Code executor (success, timeout, blocked imports)
-- Report generation
-- LangGraph workflow routing
-- Correction loop termination
-- Configuration validation
-- Demonstration mode without API key
+Tests cover CSV validation and profiling, agent output validation, executor behavior, report generation, workflow routing, correction-loop limits, configuration, demonstration mode, and failure handling.
 
-All unit tests run without API credentials (LLM calls are bypassed in demo mode).
+## Evaluate on five datasets
 
-## Five-Dataset Evaluation
+Run:
 
 ```bash
 python scripts/evaluate.py
 ```
 
-Evaluates on:
-1. **Iris** — Classification (sklearn built-in)
-2. **Titanic** — Classification (seaborn built-in)
-3. **Wine Quality** — Classification (sklearn built-in)
-4. **Breast Cancer Wisconsin** — Classification (sklearn built-in)
-5. **California Housing** — Regression (sklearn built-in)
+The benchmark suite covers a mix of classification and regression tasks:
 
-Results are saved to `datasets/evaluation_results.json`.
+| Dataset | Analysis type | What it tests |
+|---|---|---|
+| Iris | Multiclass classification | Clean numerical features and target discovery |
+| Titanic | Classification | Mixed column types, categorical fields, and missing data |
+| Wine Quality | Classification / quality prediction | Numerical feature analysis and target selection |
+| Breast Cancer Wisconsin | Binary classification | Higher-dimensional numerical data |
+| California Housing | Regression | Continuous target and larger dataset handling |
 
-### Data Sources & Licensing
+The script writes aggregate results to `datasets/evaluation_results.json`. See [DATASET_EVALUATION.md](DATASET_EVALUATION.md) for the recorded evaluation details and [FAILURE_ANALYSIS.md](FAILURE_ANALYSIS.md) for known failure modes and their causes.
 
-| Dataset | Source | License |
-|---------|--------|---------|
-| Iris | `sklearn.datasets.load_iris` | Public domain (Fisher, 1936) |
-| Titanic | `seaborn.load_dataset("titanic")` | Public domain |
-| Wine Quality | `sklearn.datasets.load_wine` | BSD (sklearn) / CC BY 4.0 (UCI) |
-| Breast Cancer | `sklearn.datasets.load_breast_cancer` | Public domain (UCI) |
-| California Housing | `sklearn.datasets.fetch_california_housing` | Public domain (StatLib) |
+## Execution and safety
 
-## How the Correction Loop Works
+The project supports a modular executor design:
 
-1. **Coder** generates analysis code from the plan.
-2. **Executor** runs the code in a subprocess with timeout.
-3. **Reviewer** checks results against the plan.
-4. If the reviewer finds issues:
-   - The error, stderr, and reviewer feedback are sent back to the Coder.
-   - The Coder generates corrected code using the full error context.
-   - This repeats up to **3 correction attempts**.
-5. After 3 failed corrections, the workflow terminates via `failure_handler`.
-6. Repeated identical code submissions are detected via code hashing.
+- **Subprocess executor:** Runs analysis code in a separate process with a timeout and a restricted environment. This helps isolate crashes but is **not a secure sandbox**; generated code still executes on the host.
+- **Docker executor:** Runs code in a container with tighter restrictions, including no network access, resource limits, reduced privileges, and read-only mounts for inputs where configured.
 
-## Execution Backends: Subprocess & Phase 2 Docker Sandboxing
+Configure `EXECUTION_BACKEND` in `.env` or your environment:
 
-The application features a modular execution service abstraction via `ExecutorInterface` with two primary backends:
+| Value | Behavior |
+|---|---|
+| `auto` | Prefer Docker when available; otherwise use the configured fallback behavior |
+| `docker` | Require Docker and fail clearly if it is unavailable |
+| `subprocess` | Force subprocess execution |
 
-1. **Phase 1: `SubprocessExecutor` (Host Subprocess)**
-   - Executes generated code out-of-process via `sys.executable`.
-   - Protects the Streamlit UI from crashes and memory corruption.
-   - Enforces a 120-second timeout, input path validation, clean environment (no API keys passed), and keyword blocking (`subprocess`, `os.system`, `socket`, `eval`, `exec`).
-   - *Limitation:* Does not provide OS kernel-level hardware isolation.
-
-2. **Phase 2: `DockerExecutor` (Containerized Sandbox)**
-   - Executes generated Python code inside disposable Docker containers.
-   - **Non-root Execution:** Runs as non-root user (`--user 1000:1000`).
-   - **Filesystem Isolation:** Mounts input dataset as read-only (`:ro`), script as read-only (`:ro`), and output directory as read-write (`:rw`).
-   - **Network Isolation:** Completely disables network access for untrusted code (`--network none`).
-   - **Resource Limits:** Enforces CPU limit (`--cpus 2.0`), memory limit (`--memory 512m`), and process count ceiling (`--pids-limit 64`).
-   - **Privilege Hardening:** Drops all Linux capabilities (`--cap-drop ALL`) and enforces `--security-opt no-new-privileges:true`. No Docker socket or privileged flags.
-   - **Secret Hygiene:** Host secrets, including `NVIDIA_API_KEY`, are completely withheld from the container environment.
-   - **Explicit Availability:** Never silently runs on the host while claiming sandboxed execution. If Docker daemon is unavailable, it fails explicitly with an actionable message.
-
-### Configuring Execution Backend
-
-Set `EXECUTION_BACKEND` in `.env` or system environment:
-- `EXECUTION_BACKEND=auto` (default) — Uses `DockerExecutor` if Docker daemon is running; otherwise falls back to `SubprocessExecutor` with transparent logging.
-- `EXECUTION_BACKEND=docker` — Strictly requires Docker; fails explicitly if Docker daemon is stopped.
-- `EXECUTION_BACKEND=subprocess` — Forces host subprocess execution.
-
-### Building the Sandbox Container Image
+Build the image with:
 
 ```bash
 docker build -t data-analyst-sandbox:latest -f docker/Dockerfile .
 ```
 
-## Security Limitations
+**Security note:** Do not run this project against untrusted code in production using the subprocess backend. Import/keyword filtering is not equivalent to operating-system isolation. Review the implementation and Docker configuration before treating any execution mode as a security boundary.
 
-- Phase 1 subprocess executor is **NOT** a secure sandbox
-- LLM-generated code runs on the host (development only)
-- Import filtering is basic and can be circumvented
-- No network isolation for executed code
-- API credentials are never passed to the execution environment
-- CSV contents are treated as untrusted (truncated before LLM prompts)
+## Known limitations
 
-## Known Issues
+- LLM-generated code quality depends on the selected model and may need correction.
+- Demonstration mode is deterministic rather than fully task-adaptive.
+- Very large datasets can increase execution time and memory use.
+- Session persistence and report retention may be limited by the current Streamlit implementation.
+- The five-dataset benchmark is a useful smoke/evaluation suite, not proof of general reliability across all possible CSVs.
+- Docker execution requires a working Docker engine and compatible host configuration.
 
-- Demonstration mode produces deterministic analysis that may not be optimally tailored
-- Large datasets may slow down the subprocess executor
-- The Streamlit session does not persist analysis results across page refreshes
-- LLM-generated code quality depends on the model used
+## Project documentation
 
-## Project Structure
+- [Dataset evaluation](DATASET_EVALUATION.md)
+- [End-to-end test report](END_TO_END_TEST_REPORT.md)
+- [Failure analysis](FAILURE_ANALYSIS.md)
+- [Final verification](FINAL_VERIFICATION.md)
+- [GitHub preparation report](GITHUB_PREPARATION_REPORT.md)
 
-```
-autonomous-data-analyst/
-├── app/
-│   ├── main.py                 # Streamlit UI
-│   ├── graph.py                # LangGraph workflow
-│   ├── state.py                # State & Pydantic models
-│   ├── config.py               # Configuration loader
-│   ├── agents/
-│   │   ├── planner.py          # Planner agent
-│   │   ├── coder.py            # Coder/Executor agent
-│   │   └── reviewer.py         # Reviewer agent
-│   ├── tools/
-│   │   ├── dataset_tools.py    # CSV ingestion & profiling
-│   │   ├── code_executor.py    # Subprocess & Docker execution abstraction
-│   │   └── report_generator.py # Markdown report generator
-│   └── prompts/
-│       ├── planner_prompt.py   # Planner prompt templates
-│       ├── coder_prompt.py     # Coder prompt templates
-│       └── reviewer_prompt.py  # Reviewer prompt templates
-├── docker/
-│   └── Dockerfile              # Phase 2 isolated sandbox container definition
-├── tests/
-│   ├── test_analyst.py         # Core & safety test suite
-│   ├── test_docker_executor.py # Docker sandbox isolation tests
-│   └── test_failure_handling.py# Controlled failure scenario tests
-├── scripts/
-│   └── evaluate.py             # 5-dataset evaluation suite
-├── datasets/                   # Benchmark CSV datasets
-├── reports/                    # Generated Markdown reports and PNG charts
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── README.md
-├── DATASET_EVALUATION.md
-├── FAILURE_ANALYSIS.md
-└── FINAL_VERIFICATION.md
-```
+## Challenge alignment
 
+This repository implements the requested core shape: CSV-driven analysis, at least three agent roles, a bounded self-correction loop, report/chart generation, and a five-dataset evaluation path. The actual completeness of the challenge requirements should be judged using the code, tests, and evaluation artifacts—not README claims alone.
+
+## License
+
+Add a repository-level license file before redistributing this project if you intend it to be open source. Dataset licenses and source attributions are documented in the evaluation materials.
