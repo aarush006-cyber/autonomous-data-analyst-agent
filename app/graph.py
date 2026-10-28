@@ -44,6 +44,35 @@ def build_graph(config: AppConfig) -> StateGraph:
 
     # --- Node functions ---
 
+    def record_agent_outcome(state: AnalystState, result: dict, stage: str) -> dict:
+        """Preserve stage-level LLM/fallback outcomes and aggregate workflow status."""
+        outcome = dict(result)
+        stage_mode = outcome.get("generation_mode", "unknown")
+        stage_fallback = bool(outcome.get("is_fallback", False))
+        stage_reason = outcome.get("fallback_reason", "") if stage_fallback else ""
+
+        already_fallback = bool(state.get("is_fallback", False))
+        fallback_used = already_fallback or stage_fallback
+        reasons = []
+        for reason in (state.get("fallback_reason", ""), stage_reason):
+            if reason and reason not in reasons:
+                reasons.append(reason)
+
+        outcome.update({
+            f"{stage}_generation_mode": stage_mode,
+            f"{stage}_fallback_reason": stage_reason,
+            "is_fallback": fallback_used,
+            "fallback_used": fallback_used,
+            "fallback_reason": "; ".join(reasons),
+            "generation_mode": (
+                "fallback" if fallback_used
+                else ("demo" if is_demo else "llm")
+            ),
+        })
+        if stage == "reviewer":
+            outcome["live_review_success"] = stage_mode == "llm" and not stage_fallback
+        return outcome
+
     def inspect_dataset(state: AnalystState) -> dict:
         """Load and profile the dataset."""
         dataset_path = state["dataset_path"]
@@ -73,12 +102,14 @@ def build_graph(config: AppConfig) -> StateGraph:
     def planner_node(state: AnalystState) -> dict:
         if state.get("workflow_status") == "failed":
             return {}
-        return run_planner(state, llm=llm)
+        result = run_planner(state, llm=llm)
+        return record_agent_outcome(state, result, "planner")
 
     def coder_node(state: AnalystState) -> dict:
         if state.get("workflow_status") == "failed":
             return {}
-        return run_coder(state, llm=llm)
+        result = run_coder(state, llm=llm)
+        return record_agent_outcome(state, result, "coder")
 
     def execute_analysis(state: AnalystState) -> dict:
         """Execute the generated code through the execution service."""
@@ -94,6 +125,7 @@ def build_graph(config: AppConfig) -> StateGraph:
                     success=False, error_summary="No code generated"
                 ).model_dump(),
                 "execution_status": "failed",
+                "execution_success": False,
                 "execution_log": ["[Executor] ERROR: No code to execute"],
             }
 
@@ -122,6 +154,7 @@ def build_graph(config: AppConfig) -> StateGraph:
         return {
             "execution_result": result.model_dump(),
             "execution_status": status,
+            "execution_success": result.success,
             "generated_artifact_paths": artifact_paths,
             "execution_log": [
                 f"[Executor] {executor.backend_name}: exit={result.exit_code}, "
@@ -132,7 +165,8 @@ def build_graph(config: AppConfig) -> StateGraph:
     def reviewer_node(state: AnalystState) -> dict:
         if state.get("workflow_status") == "failed":
             return {}
-        return run_reviewer(state, llm=llm)
+        result = run_reviewer(state, llm=llm)
+        return record_agent_outcome(state, result, "reviewer")
 
     def conditional_router(state: AnalystState) -> Literal["coder", "report_generator", "failure_handler"]:
         """Route based on review result."""
@@ -322,6 +356,18 @@ def run_analysis(
         "generated_artifact_paths": [],
         "workflow_status": "running",
         "is_demo_mode": config.llm.is_demo_mode,
+        "is_fallback": False,
+        "fallback_used": False,
+        "fallback_reason": "",
+        "generation_mode": "demo" if config.llm.is_demo_mode else "llm",
+        "planner_generation_mode": "unknown",
+        "coder_generation_mode": "unknown",
+        "reviewer_generation_mode": "unknown",
+        "planner_fallback_reason": "",
+        "coder_fallback_reason": "",
+        "reviewer_fallback_reason": "",
+        "execution_success": False,
+        "live_review_success": False,
     }
     if output_dir:
         initial_state["output_dir"] = os.path.realpath(output_dir)

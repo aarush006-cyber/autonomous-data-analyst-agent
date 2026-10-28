@@ -106,5 +106,15 @@ class AnalystState(TypedDict, total=False):
     is_fallback: bool  # True if an LLM failure triggered a fallback to deterministic logic
     fallback_reason: str  # Description of LLM failure causing fallback
     generation_mode: str  # "llm", "demo", or "fallback"
+    # Per-stage observability; stage modes are "llm", "demo", "fallback", or "unknown".
+    planner_generation_mode: str
+    coder_generation_mode: str
+    reviewer_generation_mode: str
+    planner_fallback_reason: str
+    coder_fallback_reason: str
+    reviewer_fallback_reason: str
+    fallback_used: bool
+    execution_success: bool
+    live_review_success: bool
     execution_log: Annotated[list[str], operator.add]  # append-only event log
 

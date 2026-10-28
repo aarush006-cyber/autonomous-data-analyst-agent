@@ -179,6 +179,30 @@ def _extract_ml_metrics(stdout: str) -> dict:
     return metrics
 
 
+def _evaluation_passed(record: dict, demo_mode: bool) -> bool:
+    """Return whether a dataset meets the evaluation's success criteria.
+
+    Demo runs may pass using deterministic demo agents. Live-LLM runs pass only
+    when every required stage succeeds, the reviewer uses the live LLM, and no
+    stage fell back to deterministic behavior.
+    """
+    core_success = all((
+        record.get("ingestion_success", False),
+        record.get("plan_created", False),
+        record.get("workflow_status") == "completed",
+        record.get("execution_success", False),
+        record.get("reviewer_accepted", False),
+        record.get("report_generated", False),
+    ))
+    if not core_success:
+        return False
+    if demo_mode:
+        return not record.get("is_fallback", False) and not record.get("fallback_used", False)
+    return bool(record.get("live_review_success", False)) and not (
+        record.get("is_fallback", False) or record.get("fallback_used", False)
+    )
+
+
 def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) -> dict:
     """Evaluate a single dataset. Returns a rich evaluation record."""
     name = dataset_info["name"]
@@ -196,7 +220,13 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
         "workflow_status": "not_started",
         "generation_mode": "unknown",
         "is_fallback": False,
+        "fallback_used": False,
         "fallback_reason": "",
+        "planner_generation_mode": "unknown",
+        "coder_generation_mode": "unknown",
+        "reviewer_generation_mode": "unknown",
+        "live_review_success": False,
+        "evaluation_passed": False,
         "use_ml": False,
         "ml_task": "",
         "target_column": "",
@@ -260,12 +290,17 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
         record["generation_mode"] = final_state.get("generation_mode", "unknown")
         record["is_fallback"] = bool(final_state.get("is_fallback", False))
         record["fallback_reason"] = final_state.get("fallback_reason", "")
+        record["fallback_used"] = bool(final_state.get("fallback_used", record["is_fallback"]))
+        record["planner_generation_mode"] = final_state.get("planner_generation_mode", "unknown")
+        record["coder_generation_mode"] = final_state.get("coder_generation_mode", "unknown")
+        record["reviewer_generation_mode"] = final_state.get("reviewer_generation_mode", "unknown")
+        record["live_review_success"] = bool(final_state.get("live_review_success", False))
         corrections = final_state.get("correction_history", [])
         record["correction_attempts"] = len(corrections)
         record["corrections_required"] = len(corrections) > 0
 
         exec_result = final_state.get("execution_result", {})
-        record["execution_success"] = exec_result.get("success", False)
+        record["execution_success"] = bool(final_state.get("execution_success", exec_result.get("success", False)))
 
         review = final_state.get("review_result", {})
         record["reviewer_accepted"] = review.get("status") == "accepted"
@@ -283,6 +318,10 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
         report_path = final_state.get("report_path", "")
         record["report_generated"] = bool(report and len(report) > 100)
         record["report_path"] = report_path
+
+        # A report alone is not a successful evaluation. In live mode, fallback
+        # results must not be counted as a full live-LLM pass.
+        record["evaluation_passed"] = _evaluation_passed(record, config.llm.is_demo_mode)
 
         # Also place a copy at reports/{slug}_report.md for direct access
         if report_path and os.path.isfile(report_path):
@@ -376,8 +415,8 @@ def run_evaluation(mode: str = "demo", backend: str = "docker", target_dataset: 
               f"{mark(r['report_generated']):>8} "
               f"{r['duration_seconds']:>5.1f}s")
 
-    passed = sum(1 for r in results if r["report_generated"])
-    print(f"\nPassed: {passed}/{len(results)}")
+    passed = sum(1 for r in results if r["evaluation_passed"])
+    print(f"\nPassed: {passed}/{len(results)} (complete workflow; live mode requires a live review and no fallback)")
 
     # Save summary results
     summary_data = {
