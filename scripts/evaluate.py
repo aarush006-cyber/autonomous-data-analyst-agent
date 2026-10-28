@@ -179,6 +179,30 @@ def _extract_ml_metrics(stdout: str) -> dict:
     return metrics
 
 
+def _evaluation_passed(record: dict, demo_mode: bool) -> bool:
+    """Return whether a dataset meets the evaluation's success criteria.
+
+    Demo runs may pass using deterministic demo agents. Live-LLM runs pass only
+    when every required stage succeeds, the reviewer uses the live LLM, and no
+    stage fell back to deterministic behavior.
+    """
+    core_success = all((
+        record.get("ingestion_success", False),
+        record.get("plan_created", False),
+        record.get("workflow_status") == "completed",
+        record.get("execution_success", False),
+        record.get("reviewer_accepted", False),
+        record.get("report_generated", False),
+    ))
+    if not core_success:
+        return False
+    if demo_mode:
+        return not record.get("is_fallback", False) and not record.get("fallback_used", False)
+    return bool(record.get("live_review_success", False)) and not (
+        record.get("is_fallback", False) or record.get("fallback_used", False)
+    )
+
+
 def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) -> dict:
     """Evaluate a single dataset. Returns a rich evaluation record."""
     name = dataset_info["name"]
@@ -297,18 +321,7 @@ def evaluate_dataset(dataset_info: dict, config: AppConfig, output_base: str) ->
 
         # A report alone is not a successful evaluation. In live mode, fallback
         # results must not be counted as a full live-LLM pass.
-        record["evaluation_passed"] = bool(
-            record["ingestion_success"]
-            and record["plan_created"]
-            and status == "completed"
-            and record["execution_success"]
-            and record["reviewer_accepted"]
-            and record["report_generated"]
-            and (
-                config.llm.is_demo_mode
-                or (record["live_review_success"] and not record["fallback_used"])
-            )
-        )
+        record["evaluation_passed"] = _evaluation_passed(record, config.llm.is_demo_mode)
 
         # Also place a copy at reports/{slug}_report.md for direct access
         if report_path and os.path.isfile(report_path):
